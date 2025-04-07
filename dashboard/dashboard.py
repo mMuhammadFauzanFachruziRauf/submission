@@ -5,7 +5,7 @@ import seaborn as sns
 import numpy as np
 
 # --- Muat Data ---
-data_path = "Dashboard/day.csv"
+data_path = "dashboard/day.csv"
 try:
     df = pd.read_csv(data_path, on_bad_lines='skip', engine='python')
 except FileNotFoundError:
