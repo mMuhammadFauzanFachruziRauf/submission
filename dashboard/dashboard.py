@@ -7,7 +7,7 @@ import seaborn as sns
 import numpy as np
 
 # --- Load Dataset ---
-file_path = "Dashboard/day.csv"
+file_path = "dashboard/day.csv"
 try:
     day_df = pd.read_csv(file_path, on_bad_lines='skip', engine='python')
 except FileNotFoundError:
