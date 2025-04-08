@@ -1,1 +1,1 @@
-https://bike-dicoding-mfauzanfr.streamlit.app/
+https://bikedicoding.streamlit.app/

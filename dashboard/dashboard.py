@@ -1,107 +1,143 @@
+# file: dashboard_bike_sharing.py
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-# --- Muat Data ---
-data_path = "dashboard/day.csv"
+# --- Load Dataset ---
+file_path = "Dashboard/day.csv"
 try:
-    df = pd.read_csv(data_path, on_bad_lines='skip', engine='python')
+    day_df = pd.read_csv(file_path, on_bad_lines='skip', engine='python')
 except FileNotFoundError:
-    st.error(f"Data tidak ditemukan di {data_path}. Silakan periksa lokasi file.")
+    st.error(f"File {file_path} tidak ditemukan. Pastikan file tersedia di folder Dashboard.")
     st.stop()
 
-# --- Persiapan Data ---
-df['dteday'] = pd.to_datetime(df['dteday'])
+# --- Preprocessing ---
+day_df['dteday'] = pd.to_datetime(day_df['dteday'])
 
-# Tambahkan label musim dan cuaca
-df['musim'] = df['season'].map({1: "Semi", 2: "Panas", 3: "Gugur", 4: "Dingin"})
-df['cuaca'] = df['weathersit'].map({1: "Cerah", 2: "Berawan", 3: "Hujan/Salju"})
+season_mapping = {1: "Spring", 2: "Summer", 3: "Fall", 4: "Winter"}
+day_df['season_label'] = day_df['season'].map(season_mapping)
 
-# --- Navigasi Sidebar ---
-st.sidebar.title("📈 Menu Visualisasi")
-menu = st.sidebar.selectbox("Pilih Jenis Visualisasi", [
-    "Lihat Data", "Distribusi Musiman", "Tren Harian", 
-    "Total per Musim", "Pengaruh Cuaca", "Hari Kerja vs Akhir Pekan"
+weather_mapping = {1: "Clear", 2: "Cloudy", 3: "Rain/Snow"}
+day_df['weather_label'] = day_df['weathersit'].map(weather_mapping)
+
+# --- Sidebar Navigation ---
+st.sidebar.title("📊 Menu Analisis Data")
+option = st.sidebar.selectbox("Pilih Analisis", [
+    "Preview Dataset", "Distribusi Penyewaan Sepeda", "Tren Penyewaan Sepeda",
+    "Barplot Musiman", "Analisis Cuaca", "Pola Hari Kerja vs Akhir Pekan", 
+    "Pertanyaan, Insight, Kesimpulan"
 ])
 
 # --- Filter Tanggal ---
-st.sidebar.subheader("🗓️ Filter Tanggal")
-awal = st.sidebar.date_input("Mulai", df['dteday'].min())
-akhir = st.sidebar.date_input("Akhir", df['dteday'].max())
-df_filtered = df[(df['dteday'] >= pd.Timestamp(awal)) & (df['dteday'] <= pd.Timestamp(akhir))]
+st.sidebar.subheader("📅 Filter Rentang Tanggal")
+start_date = st.sidebar.date_input("Tanggal Mulai", day_df['dteday'].min())
+end_date = st.sidebar.date_input("Tanggal Akhir", day_df['dteday'].max())
 
-# --- Tampilkan Data ---
-if menu == "Lihat Data":
-    st.title("📄 Data Penyewaan Sepeda")
-    st.dataframe(df_filtered.head())
+filtered_df = day_df[
+    (day_df['dteday'] >= pd.Timestamp(start_date)) & 
+    (day_df['dteday'] <= pd.Timestamp(end_date))
+]
 
-# --- Visualisasi Distribusi Rata-rata per Musim ---
-elif menu == "Distribusi Musiman":
-    st.title("📊 Rata-rata Penyewaan per Musim")
+# --- Preview Dataset ---
+if option == "Preview Dataset":
+    st.title("📂 Dataset Bike Sharing")
+    st.dataframe(filtered_df.head())
+
+# --- Distribusi Penyewaan Sepeda ---
+elif option == "Distribusi Penyewaan Sepeda":
+    st.title("📊 Distribusi Penyewaan Sepeda Berdasarkan Musim")
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.barplot(x="musim", y="cnt", data=df_filtered, estimator=np.mean, palette="viridis", ax=ax)
+    sns.barplot(x="season_label", y="cnt", data=filtered_df, estimator=np.mean, palette="viridis", ax=ax)
     ax.set_xlabel("Musim")
-    ax.set_ylabel("Rata-rata Jumlah Penyewaan")
-    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.set_ylabel("Rata-rata Penyewaan Sepeda")
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
-# --- Tren Waktu ---
-elif menu == "Tren Harian":
-    st.title("📆 Tren Penyewaan Sepeda")
+# --- Tren Sepanjang Tahun ---
+elif option == "Tren Penyewaan Sepeda":
+    st.title("📈 Tren Penyewaan Sepeda Sepanjang Tahun")
     fig, ax = plt.subplots(figsize=(12, 6))
-    sns.lineplot(x=df_filtered['dteday'], y=df_filtered['cnt'], color="teal", ax=ax)
+    sns.lineplot(x=filtered_df['dteday'], y=filtered_df['cnt'], color="blue", marker="o", ax=ax)
     ax.set_xlabel("Tanggal")
-    ax.set_ylabel("Jumlah Penyewaan")
-    ax.set_title("Tren Harian Penyewaan Sepeda")
-    ax.grid(True, linestyle="--", alpha=0.5)
+    ax.set_ylabel("Jumlah Penyewaan Sepeda")
+    ax.set_title("Tren Penyewaan Sepeda Sepanjang Tahun")
     plt.xticks(rotation=45)
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
-# --- Total Penyewaan Berdasarkan Musim ---
-elif menu == "Total per Musim":
-    st.title("📊 Total Penyewaan per Musim")
+# --- Barplot Musiman ---
+elif option == "Barplot Musiman":
+    st.title("📊 Total Penyewaan Sepeda Berdasarkan Musim")
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.barplot(x="musim", y="cnt", data=df_filtered, estimator=np.sum, palette="magma", ax=ax)
+    sns.barplot(x="season_label", y="cnt", data=filtered_df, estimator=np.sum, palette="magma", ax=ax)
     ax.set_xlabel("Musim")
-    ax.set_ylabel("Total Penyewaan")
-    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.set_ylabel("Total Penyewaan Sepeda")
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
-# --- Analisis Berdasarkan Cuaca ---
-elif menu == "Pengaruh Cuaca":
-    st.title("🌦️ Penyewaan Berdasarkan Kondisi Cuaca")
+# --- Analisis Cuaca ---
+elif option == "Analisis Cuaca":
+    st.title("☀️ Analisis Cuaca dan Penyewaan Sepeda")
 
-    # Scatter plot suhu vs penyewaan
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.scatterplot(x=df_filtered['temp'], y=df_filtered['cnt'], hue=df_filtered['cuaca'], palette="coolwarm", alpha=0.6, ax=ax)
-    ax.set_xlabel("Temperatur (Skala Normal)")
-    ax.set_ylabel("Jumlah Penyewaan")
-    ax.grid(True, linestyle="--", alpha=0.5)
+    sns.scatterplot(x=filtered_df['temp'], y=filtered_df['cnt'], hue=filtered_df['weather_label'], palette="coolwarm", alpha=0.6, ax=ax)
+    ax.set_xlabel("Temperatur (Normalisasi)")
+    ax.set_ylabel("Jumlah Penyewaan Sepeda")
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
-    # Rata-rata penyewaan per kondisi cuaca
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.barplot(x='cuaca', y='cnt', data=df_filtered, estimator=np.mean, palette="rocket", ax=ax)
-    ax.set_xlabel("Cuaca")
-    ax.set_ylabel("Rata-rata Penyewaan")
-    ax.grid(True, linestyle="--", alpha=0.6)
+    sns.barplot(x=filtered_df['weather_label'], y=filtered_df['cnt'], estimator=np.mean, palette="rocket", ax=ax)
+    ax.set_xlabel("Kondisi Cuaca")
+    ax.set_ylabel("Rata-rata Penyewaan Sepeda")
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
 # --- Hari Kerja vs Akhir Pekan ---
-elif menu == "Hari Kerja vs Akhir Pekan":
-    st.title("🧑‍💼 Hari Kerja vs 🛌 Akhir Pekan")
+elif option == "Pola Hari Kerja vs Akhir Pekan":
+    st.title("📅 Pola Penyewaan Sepeda: Hari Kerja vs Akhir Pekan")
 
-    df_temp = df_filtered.copy()
-    df_temp['Jenis Hari'] = df_temp['workingday'].map({0: "Akhir Pekan", 1: "Hari Kerja"})
+    df_copy = filtered_df.copy()
+    df_copy["Kategori Hari"] = df_copy["workingday"].map({0: "Akhir Pekan", 1: "Hari Kerja"})
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.barplot(x='Jenis Hari', y='cnt', data=df_temp, estimator=np.mean, palette="coolwarm", ax=ax)
-    ax.set_xlabel("Jenis Hari")
-    ax.set_ylabel("Rata-rata Penyewaan")
-    ax.set_title("Perbandingan Penyewaan antara Hari Kerja dan Akhir Pekan")
-    ax.grid(True, linestyle="--", alpha=0.5)
+    sns.barplot(x="Kategori Hari", y="cnt", data=df_copy, estimator=np.mean, palette="coolwarm", ax=ax)
+    ax.set_xlabel("Kategori Hari")
+    ax.set_ylabel("Rata-rata Penyewaan Sepeda")
+    ax.set_title("Perbandingan Penyewaan Sepeda pada Hari Kerja vs. Akhir Pekan")
+    ax.grid(True, linestyle="--", alpha=0.7)
     st.pyplot(fig)
 
-st.sidebar.info("Silakan pilih menu visualisasi untuk melihat hasil analisis.")
+# --- Insight dan Kesimpulan ---
+elif option == "Pertanyaan, Insight, Kesimpulan":
+    st.title("🧠 Insight, Kesimpulan, dan Rekomendasi")
+
+    st.subheader("📌 Pertanyaan Eksplorasi")
+    st.markdown("**Bagaimana distribusi penyewaan sepeda pada setiap musim?**")
+
+    st.subheader("🔍 Temuan / Insight")
+    st.markdown("""
+    - Musim **gugur (Fall)** menunjukkan jumlah rata-rata dan total penyewaan sepeda **tertinggi**.
+    - Musim **semi (Spring)** memiliki penyewaan **terendah** dibanding musim lain.
+    - Pengaruh musim terhadap penyewaan sangat signifikan — musim dengan suhu nyaman mendorong lebih banyak aktivitas luar ruangan.
+    """)
+
+    st.subheader("✅ Kesimpulan")
+    st.markdown("""
+    - **Fall (Musim Gugur)** adalah musim dengan permintaan tertinggi terhadap layanan penyewaan sepeda.
+    - **Spring (Musim Semi)** menjadi musim dengan tingkat penyewaan terendah, kemungkinan karena suhu yang belum stabil.
+    - Strategi bisnis harus mempertimbangkan fluktuasi ini untuk efisiensi dan peningkatan layanan.
+    """)
+
+    st.subheader("💡 Rekomendasi")
+    st.markdown("""
+    1. **Tingkatkan stok sepeda dan tenaga operasional pada musim Fall dan Summer**.
+    2. **Adakan promosi khusus saat Spring**, seperti diskon penyewaan atau kampanye komunitas.
+    3. **Gunakan data historis cuaca dan musim** untuk merencanakan logistik dan operasional lebih baik.
+    4. **Evaluasi lokasi-lokasi strategis penyewaan** berdasarkan pola musim untuk optimalisasi penempatan sepeda.
+    """)
+
+st.sidebar.info("Pilih menu di atas untuk melihat analisis data yang sesuai.")
